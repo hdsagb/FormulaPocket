@@ -8,8 +8,10 @@
 import { Formula, FORMULAS, EMPTY_FORMULA, parseFavIds, toggleFavId } from '../model/Formula';
 import { FormulaCard } from '../views/FormulaCard';
 import { FormulaDetailSheet } from '../views/FormulaDetailSheet';
+import { PrivacyPolicySheet } from '../views/PrivacyPolicySheet';
 import { window, display } from '@kit.ArkUI';
 import { KeyCode } from '@ohos.multimodalInput.keyCode';
+import { common } from '@kit.AbilityKit';
 
 interface Group {
   chapter: string;
@@ -32,6 +34,8 @@ const TABS: TabItem[] = [
 PersistentStorage.persistProp('favIds', '[]');
 // 记住上次浏览的科目，重启后恢复
 PersistentStorage.persistProp('lastTab', 0);
+// 隐私政策同意标记：0 未同意（首启弹窗），1 已同意
+PersistentStorage.persistProp('privacyAgreed', 0);
 
 const WIDE_MIN_VP = 600;  // 断点：窗口宽 ≥600vp 用双栏
 const SIDEBAR_WIDTH = 216;
@@ -41,10 +45,18 @@ const SIDEBAR_WIDTH = 216;
 struct Index {
   @StorageLink('favIds') favIds: string = '[]';
   @StorageLink('lastTab') activeTab: number = 0;
+  @StorageLink('privacyAgreed') privacyAgreed: number = 0;
   @State keyword: string = '';
   @State isShowSheet: boolean = false;
+  @State isShowPrivacy: boolean = false;
   @State currentFormula: Formula = EMPTY_FORMULA;
   @State windowWidthVp: number = 1200;
+
+  // 用户在首启弹窗选择「不同意并退出」
+  private exitApp(): void {
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    ctx.terminateSelf();
+  }
 
   private isWide(): boolean {
     return this.windowWidthVp >= WIDE_MIN_VP;
@@ -169,11 +181,42 @@ struct Index {
           this.activeTab = i;
         })
       }, (t: TabItem) => t.label)
+      Blank()
+      Divider()
+        .color('#DDE3EC')
+        .strokeWidth(1)
+      Text('隐私政策')
+        .fontSize(12)
+        .fontColor('#8A93A0')
+        .padding({ top: 6, bottom: 6 })
+        .hoverEffect(HoverEffect.Highlight)
+        .borderRadius(8)
+        .onClick(() => {
+          this.isShowPrivacy = true;
+        })
     }
     .width(SIDEBAR_WIDTH)
     .height('100%')
     .padding(12)
     .backgroundColor('#EDF1F6')
+    .bindSheet(this.isShowPrivacy, this.PrivacyViewBuilder(), {
+      height: 560,
+      dragBar: false,
+      showClose: true,
+      onDisappear: () => {
+        this.isShowPrivacy = false;
+      }
+    })
+  }
+
+  @Builder
+  PrivacyViewBuilder() {
+    PrivacyPolicySheet({
+      mode: 'view',
+      onClose: () => {
+        this.isShowPrivacy = false;
+      }
+    })
   }
 
   @Builder
@@ -279,11 +322,12 @@ struct Index {
   }
 
   build() {
-    Navigation() {
+    Stack() {
+      Navigation() {
       Column() {
         // 顶部工具栏
         Row({ space: 12 }) {
-          Text('考研数学公式口袋书')
+          Text('口袋公式本')
             .fontSize(20)
             .fontWeight(FontWeight.Bold)
             .fontColor('#1F2430')
@@ -352,5 +396,36 @@ struct Index {
         this.currentFormula = EMPTY_FORMULA;
       }
     })
+
+      // 首次启动隐私政策同意弹窗（审核硬性要求）
+      if (this.privacyAgreed === 0) {
+        Column() {
+          Column() {
+            PrivacyPolicySheet({
+              mode: 'consent',
+              onAgree: () => {
+                this.privacyAgreed = 1;
+              },
+              onDisagree: () => {
+                this.exitApp();
+              }
+            })
+          }
+          .width(640)
+          .height('82%')
+          .constraintSize({ maxWidth: '92%' })
+          .borderRadius(16)
+          .backgroundColor(Color.White)
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor('rgba(15,18,25,0.55)')
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#F7F8FA')
   }
 }

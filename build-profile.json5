@@ -1,0 +1,56 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "storeFile": "D:/Users/3257219077/DevEcoStudioProjects/FormulaPocket/signature/FormulaPocket.p12",
+          "storePassword": "0000001AD2C13AF58258E3EF2C91825533A18FB215A5DA53BB0D66B3BD42EFC96B03B676D272F54BCA25",
+          "keyAlias": "trae-FormulaPocket",
+          "keyPassword": "0000001A52D9E4255FDD98CB0E90D6DC92B40BA282B7A2EE4B6C13F321363998F963A07867FEF5055F2E",
+          "signAlg": "SHA256withECDSA",
+          "profile": "D:/Users/3257219077/DevEcoStudioProjects/FormulaPocket/signature/FormulaPocketRelease.p7b",
+          "certpath": "D:\\Users\\3257219077\\DevEcoStudioProjects\\FormulaPocket\\signature/FormulaPocket.cer"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "targetSdkVersion": "26.0.0",
+        "compatibleSdkVersion": "6.1.1(24)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

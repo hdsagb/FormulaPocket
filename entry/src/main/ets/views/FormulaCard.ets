@@ -8,6 +8,8 @@ import { Formula, parseFavIds, toggleFavId } from '../model/Formula';
 @Component
 export struct FormulaCard {
   @Prop formula: Formula;
+  /** 搜索关键词，用于标题命中高亮；为空时不高亮 */
+  @Prop keyword: string = '';
   @StorageLink('favIds') favIds: string = '[]';
   /** 点击卡片主体时由父组件打开详情浮层 */
   onOpen: (formula: Formula) => void = () => {};
@@ -16,10 +18,26 @@ export struct FormulaCard {
     return parseFavIds(this.favIds).includes(this.formula.id);
   }
 
+  /** 标题中关键词首个命中位置（不区分大小写），未命中返回 -1 */
+  private hitIndex(): number {
+    if (this.keyword.length === 0) {
+      return -1;
+    }
+    return this.formula.title.toLowerCase().indexOf(this.keyword.toLowerCase());
+  }
+
   build() {
     Column({ space: 8 }) {
       Row({ space: 8 }) {
-        Text(this.formula.title)
+        if (this.hitIndex() >= 0) {
+          // 命中：标题拆为 前段 + 命中段(高亮) + 后段
+          Text() {
+            Span(this.formula.title.substring(0, this.hitIndex()))
+            Span(this.formula.title.substring(this.hitIndex(), this.hitIndex() + this.keyword.length))
+              .fontColor('#2E6BE6')
+              .fontWeight(FontWeight.Bolder)
+            Span(this.formula.title.substring(this.hitIndex() + this.keyword.length))
+          }
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
           .fontColor('#1F2430')
@@ -29,6 +47,18 @@ export struct FormulaCard {
           .onClick(() => {
             this.onOpen(this.formula);
           })
+        } else {
+          Text(this.formula.title)
+            .fontSize(17)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#1F2430')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+            .onClick(() => {
+              this.onOpen(this.formula);
+            })
+        }
         Text(this.isFav() ? '★' : '☆')
           .fontSize(20)
           .fontColor(this.isFav() ? '#F7B500' : '#B0B6BF')

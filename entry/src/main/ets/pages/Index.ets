@@ -84,16 +84,37 @@ struct Index {
     this.windowWidthVp = widthPx / display.getDefaultDisplaySync().densityPixels;
   }
 
-  /** 当前 Tab 的数据：科目过滤（或收藏聚合）+ 关键词过滤 + 按章节分组 */
-  private getGroups(): Group[] {
+  /** 当前 Tab 的数据：科目过滤（或收藏聚合）+ 关键词过滤 + 按相关度排序 */
+  private getFiltered(): Formula[] {
     const key: string = TABS[this.activeTab].key;
     let base: Formula[] = key === ''
       ? FORMULAS.filter((f: Formula) => parseFavIds(this.favIds).includes(f.id))
       : FORMULAS.filter((f: Formula) => f.subject === key);
     const kw: string = this.keyword.trim();
     if (kw.length > 0) {
-      base = base.filter((f: Formula) => f.title.includes(kw));
+      // 搜索范围：标题 / 公式内容 / 适用条件
+      base = base.filter((f: Formula) =>
+        f.title.includes(kw) || f.formula.includes(kw) || f.condition.includes(kw));
+      // 相关度排序：标题前缀命中 > 标题命中 > 内容命中（同分保持原有顺序）
+      base.sort((a: Formula, b: Formula) => this.searchScore(b, kw) - this.searchScore(a, kw));
     }
+    return base;
+  }
+
+  /** 搜索相关度评分：标题前缀 3 / 标题包含 2 / 公式内容或条件命中 1 */
+  private searchScore(f: Formula, kw: string): number {
+    if (f.title.startsWith(kw)) {
+      return 3;
+    }
+    if (f.title.includes(kw)) {
+      return 2;
+    }
+    return 1;
+  }
+
+  /** 按章节分组（保持 getFiltered 的排序结果，同章节需连续） */
+  private getGroups(): Group[] {
+    const base: Formula[] = this.getFiltered();
     const groups: Group[] = [];
     for (const f of base) {
       const found: Group | undefined = groups.find((g: Group) => g.chapter === f.chapter);
@@ -190,6 +211,7 @@ struct Index {
             ForEach(g.items, (f: Formula) => {
               FormulaCard({
                 formula: f,
+                keyword: this.keyword,
                 onOpen: (formula: Formula) => {
                   this.openDetail(formula);
                 }
@@ -267,12 +289,19 @@ struct Index {
             .fontColor('#1F2430')
             .maxLines(1)
           Blank()
-          Search({ value: this.keyword, placeholder: '搜索公式名' })
+          Search({ value: this.keyword, placeholder: '搜索公式名 / 内容 / 条件' })
             .id('searchInput')
             .width(260)
             .height(36)
             .onChange((value: string) => {
               this.keyword = value;
+            })
+            // 回车打开相关度最高的第一条结果
+            .onSubmit(() => {
+              const list: Formula[] = this.getFiltered();
+              if (list.length > 0) {
+                this.openDetail(list[0]);
+              }
             })
             .defaultFocus(true)
         }

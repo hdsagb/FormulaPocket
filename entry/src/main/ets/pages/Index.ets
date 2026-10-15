@@ -11,7 +11,6 @@ import { FormulaDetailSheet } from '../views/FormulaDetailSheet';
 import { PrivacyPolicySheet } from '../views/PrivacyPolicySheet';
 import { window, display } from '@kit.ArkUI';
 import { KeyCode } from '@ohos.multimodalInput.keyCode';
-import { common } from '@kit.AbilityKit';
 
 interface Group {
   chapter: string;
@@ -34,8 +33,6 @@ const TABS: TabItem[] = [
 PersistentStorage.persistProp('favIds', '[]');
 // 记住上次浏览的科目，重启后恢复
 PersistentStorage.persistProp('lastTab', 0);
-// 隐私政策同意标记：0 未同意（首启弹窗），1 已同意
-PersistentStorage.persistProp('privacyAgreed', 0);
 
 const WIDE_MIN_VP = 600;  // 断点：窗口宽 ≥600vp 用双栏
 const SIDEBAR_WIDTH = 216;
@@ -45,18 +42,11 @@ const SIDEBAR_WIDTH = 216;
 struct Index {
   @StorageLink('favIds') favIds: string = '[]';
   @StorageLink('lastTab') activeTab: number = 0;
-  @StorageLink('privacyAgreed') privacyAgreed: number = 0;
   @State keyword: string = '';
   @State isShowSheet: boolean = false;
   @State isShowPrivacy: boolean = false;
   @State currentFormula: Formula = EMPTY_FORMULA;
   @State windowWidthVp: number = 1200;
-
-  // 用户在首启弹窗选择「不同意并退出」
-  private exitApp(): void {
-    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
-    ctx.terminateSelf();
-  }
 
   private isWide(): boolean {
     return this.windowWidthVp >= WIDE_MIN_VP;
@@ -212,7 +202,6 @@ struct Index {
   @Builder
   PrivacyViewBuilder() {
     PrivacyPolicySheet({
-      mode: 'view',
       onClose: () => {
         this.isShowPrivacy = false;
       }
@@ -396,33 +385,6 @@ struct Index {
         this.currentFormula = EMPTY_FORMULA;
       }
     })
-
-      // 首次启动隐私政策同意弹窗（审核硬性要求）
-      if (this.privacyAgreed === 0) {
-        Column() {
-          Column() {
-            PrivacyPolicySheet({
-              mode: 'consent',
-              onAgree: () => {
-                this.privacyAgreed = 1;
-              },
-              onDisagree: () => {
-                this.exitApp();
-              }
-            })
-          }
-          .width(640)
-          .height('82%')
-          .constraintSize({ maxWidth: '92%' })
-          .borderRadius(16)
-          .backgroundColor(Color.White)
-        }
-        .width('100%')
-        .height('100%')
-        .backgroundColor('rgba(15,18,25,0.55)')
-        .justifyContent(FlexAlign.Center)
-        .alignItems(HorizontalAlign.Center)
-      }
     }
     .width('100%')
     .height('100%')

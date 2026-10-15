@@ -1,15 +1,12 @@
 import { PRIVACY_POLICY_TEXT } from '../model/PrivacyPolicy';
 
 /**
- * 隐私政策卡片组件。
- * mode = 'consent'：首次启动同意弹窗（不同意并退出 / 同意并继续）
- * mode = 'view'：应用内查看浮层（我知道了）
+ * 隐私政策查看浮层（应用内侧栏入口）。
+ * 首次启动的同意弹窗由华为「标准化隐私声明托管服务」在系统层提供，
+ * 应用内不再自建首启弹窗，避免双重弹窗。
  */
 @Component
 export struct PrivacyPolicySheet {
-  @Prop mode: string = 'view';
-  onAgree: () => void = () => {};
-  onDisagree: () => void = () => {};
   onClose: () => void = () => {};
 
   build() {
@@ -29,36 +26,14 @@ export struct PrivacyPolicySheet {
       .layoutWeight(1)
       .align(Alignment.TopStart)
 
-      if (this.mode === 'consent') {
-        Row({ space: 12 }) {
-          Button('不同意并退出')
-            .fontSize(14)
-            .backgroundColor('#EEF1F5')
-            .fontColor('#5A6270')
-            .layoutWeight(1)
-            .onClick(() => {
-              this.onDisagree();
-            })
-          Button('同意并继续')
-            .fontSize(14)
-            .backgroundColor('#4A6CF7')
-            .fontColor(Color.White)
-            .layoutWeight(1)
-            .onClick(() => {
-              this.onAgree();
-            })
-        }
+      Button('我知道了')
+        .fontSize(14)
         .width('100%')
-      } else {
-        Button('我知道了')
-          .fontSize(14)
-          .width('100%')
-          .backgroundColor('#4A6CF7')
-          .fontColor(Color.White)
-          .onClick(() => {
-            this.onClose();
-          })
-      }
+        .backgroundColor('#4A6CF7')
+        .fontColor(Color.White)
+        .onClick(() => {
+          this.onClose();
+        })
     }
     .width('100%')
     .height('100%')

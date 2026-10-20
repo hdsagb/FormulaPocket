@@ -10,7 +10,10 @@ export struct FormulaCard {
   @Prop formula: Formula;
   /** 搜索关键词，用于标题命中高亮；为空时不高亮 */
   @Prop keyword: string = '';
+  /** 键盘方向键选中态（PC 焦点高亮） */
+  @Prop selected: boolean = false;
   @StorageLink('favIds') favIds: string = '[]';
+  @StorageLink('fontScale') fontScale: number = 1;
   /** 点击卡片主体时由父组件打开详情浮层 */
   onOpen: (formula: Formula) => void = () => {};
 
@@ -38,7 +41,7 @@ export struct FormulaCard {
               .fontWeight(FontWeight.Bolder)
             Span(this.formula.title.substring(this.hitIndex() + this.keyword.length))
           }
-          .fontSize(17)
+          .fontSize(Math.round(17 * this.fontScale))
           .fontWeight(FontWeight.Bold)
           .fontColor('#1F2430')
           .maxLines(1)
@@ -49,7 +52,7 @@ export struct FormulaCard {
           })
         } else {
           Text(this.formula.title)
-            .fontSize(17)
+            .fontSize(Math.round(17 * this.fontScale))
             .fontWeight(FontWeight.Bold)
             .fontColor('#1F2430')
             .maxLines(1)
@@ -70,13 +73,13 @@ export struct FormulaCard {
 
       Column({ space: 8 }) {
         Text(this.formula.formula)
-          .fontSize(16)
+          .fontSize(Math.round(16 * this.fontScale))
           .fontColor('#333B4A')
           .copyOption(CopyOptions.InApp)
           .width('100%')
 
         Text('适用：' + this.formula.condition)
-          .fontSize(13)
+          .fontSize(Math.round(13 * this.fontScale))
           .fontColor('#8A93A0')
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -87,8 +90,8 @@ export struct FormulaCard {
         this.onOpen(this.formula);
       })
     }
-    .padding(14)
-    .borderRadius(12)
+    .padding(12)
+    .border({ width: 2, color: this.selected ? '#2E6BE6' : Color.Transparent, radius: 12 })
     .backgroundColor('#FFFFFF')
     .hoverEffect(HoverEffect.Highlight)
   }

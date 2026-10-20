@@ -9,6 +9,7 @@ import { pasteboard } from '@kit.BasicServicesKit';
 export struct FormulaDetailSheet {
   @Prop formula: Formula;
   @StorageLink('favIds') favIds: string = '[]';
+  @StorageLink('fontScale') fontScale: number = 1;
   onClose: () => void = () => {};
 
   private isFav(): boolean {
@@ -17,10 +18,20 @@ export struct FormulaDetailSheet {
 
   /** 一键复制公式文本到系统剪贴板 */
   private copyFormula(): void {
-    const pasteData: pasteboard.PasteData =
-      pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, this.formula.formula);
-    pasteboard.getSystemPasteboard().setData(pasteData);
-    this.getUIContext().getPromptAction().showToast({ message: '公式已复制', duration: 1500 });
+    try {
+      const pasteData: pasteboard.PasteData =
+        pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, this.formula.formula);
+      pasteboard.getSystemPasteboard().setData(pasteData).catch(() => {
+        // 剪贴板写入失败时静默处理
+      });
+    } catch (err) {
+      // 剪贴板服务不可用时静默处理
+    }
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: '公式已复制', duration: 1500 });
+    } catch (err) {
+      // Toast 失败不影响主流程
+    }
   }
 
   build() {
@@ -63,7 +74,7 @@ export struct FormulaDetailSheet {
       Column({ space: 10 }) {
         ForEach(this.formula.formula.split('\n'), (line: string) => {
           Text(line)
-            .fontSize(32)
+            .fontSize(Math.round(32 * this.fontScale))
             .fontWeight(FontWeight.Medium)
             .fontColor('#1F2430')
             .textAlign(TextAlign.Center)
@@ -79,7 +90,7 @@ export struct FormulaDetailSheet {
         .width('100%')
 
       Text('适用条件：' + this.formula.condition)
-        .fontSize(15)
+        .fontSize(Math.round(15 * this.fontScale))
         .fontColor('#6B7482')
         .width('100%')
     }

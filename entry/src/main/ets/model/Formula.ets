@@ -44,6 +44,57 @@ export function toggleFavId(favIds: string, id: number): string {
   return JSON.stringify(arr);
 }
 
+/** 最近浏览 id 列表的最大长度 */
+export const RECENT_MAX = 20;
+
+/** 解析 id 列表（JSON 字符串 → number[]），异常时返回空数组 */
+export function parseIdList(raw: string): number[] {
+  try {
+    return JSON.parse(raw) as number[];
+  } catch (err) {
+    return [];
+  }
+}
+
+/**
+ * 把某条公式 id 置顶到最近浏览列表（去重 + 截断），返回新的 JSON 字符串。
+ */
+export function pushRecentId(raw: string, id: number): string {
+  const arr: number[] = parseIdList(raw).filter((x: number) => x !== id);
+  arr.unshift(id);
+  return JSON.stringify(arr.slice(0, RECENT_MAX));
+}
+
+/** 单条公式的自测记录 */
+export interface QuizStat {
+  right: number; // 记住次数
+  wrong: number; // 没记住次数
+}
+
+/** 自测统计：id → {right, wrong}，以 JSON 字符串持久化 */
+export function parseQuizStats(raw: string): Record<string, QuizStat> {
+  try {
+    return JSON.parse(raw) as Record<string, QuizStat>;
+  } catch (err) {
+    return {};
+  }
+}
+
+/** 记录一次自测结果，返回新的 JSON 字符串 */
+export function addQuizStat(raw: string, id: number, ok: boolean): string {
+  const stats: Record<string, QuizStat> = parseQuizStats(raw);
+  const key: string = id.toString();
+  const prev: QuizStat | undefined = stats[key];
+  const cur: QuizStat = prev === undefined ? { right: 0, wrong: 0 } : prev;
+  if (ok) {
+    cur.right = cur.right + 1;
+  } else {
+    cur.wrong = cur.wrong + 1;
+  }
+  stats[key] = cur;
+  return JSON.stringify(stats);
+}
+
 /**
  * 公式数据：共 105 条（高数 45 / 线代 26 / 概率论 34）。
  * - id 1~30 为初版数据，保持不变（兼容已收藏条目）

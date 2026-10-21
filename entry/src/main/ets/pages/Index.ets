@@ -11,6 +11,8 @@ import { FormulaCard } from '../views/FormulaCard';
 import { FormulaDetailSheet } from '../views/FormulaDetailSheet';
 import { FlashcardView } from '../views/FlashcardView';
 import { SettingsSheet } from '../views/SettingsSheet';
+import { SCOPE_ALL, SCOPE_OPTIONS, inScope } from '../model/ScopeIndex';
+import { applyThemeMode, THEME_SYSTEM } from '../model/Theme';
 import { window, display } from '@kit.ArkUI';
 import Context from '@ohos.app.ability.common';
 import { KeyCode } from '@ohos.multimodalInput.keyCode';
@@ -25,6 +27,12 @@ interface RowItem {
   isHeader: boolean;
   chapter: string;
   formula: Formula;
+}
+
+/** 搜索中间结果：先算分再排序，避免在比较器里重复计算 */
+interface ScoredFormula {
+  formula: Formula;
+  score: number;
 }
 
 interface TabItem {
@@ -50,6 +58,10 @@ PersistentStorage.persistProp('recentIds', '[]');
 PersistentStorage.persistProp('quizStats', '{}');
 // 正文字号缩放（0.9 紧凑 / 1 标准 / 1.15 大）
 PersistentStorage.persistProp('fontScale', 1);
+// 考试范围：0 全部 / 1 数一 / 2 数二 / 3 数三
+PersistentStorage.persistProp('examScope', SCOPE_ALL);
+// 主题模式：system / light / dark
+PersistentStorage.persistProp('themeMode', THEME_SYSTEM);
 
 const WIDE_MIN_VP = 600;  // 断点：窗口宽 ≥600vp 用双栏
 const SIDEBAR_WIDTH = 216;
@@ -57,10 +69,10 @@ const SIDEBAR_WIDTH = 216;
 @Entry
 @Component
 struct Index {
-  @StorageLink('favIds') favIds: string = '[]';
-  @StorageLink('lastTab') activeTab: number = 0;
-  @StorageLink('recentIds') recentIds: string = '[]';
-  @State keyword: string = '';
+  @StorageLink('favIds') @Watch('onFilterChanged') favIds: string = '[]';
+  @StorageLink('lastTab') @Watch('onFilterChanged') activeTab: number = 0;
+  @StorageLink('recentIds') @Watch('onFilterChanged') recentIds: string = '[]';
+  @State @Watch('onFilterChanged') keyword: string = '';
   @State isShowSheet: boolean = false;
   @State isShowSettings: boolean = false;
   @State isQuizShow: boolean = false;
@@ -69,6 +81,14 @@ struct Index {
   @State selectedRow: number = -1;
   /** 搜索框是否持有焦点：持有时方向键归输入框，不做列表导航 */
   @State searchFocused: boolean = true;
+  /** 考试范围：0 全部 / 1 数一 / 2 数二 / 3 数三 */
+  @StorageLink('examScope') @Watch('onFilterChanged') examScope: number = SCOPE_ALL;
+  /** 主题模式：system / light / dark */
+  @StorageLink('themeMode') themeMode: string = THEME_SYSTEM;
+  /** 当前列表行（章节标题 + 公式），仅在筛选条件变化时重算一次 */
+  @State viewRows: RowItem[] = [];
+  /** 收藏数量（避免侧边栏每帧重复解析收藏 JSON） */
+  @State favCount: number = 0;
 
   private listScroller: Scroller = new Scroller();
   /** 自测题目来源（打开闪卡前确定） */
@@ -115,7 +135,10 @@ struct Index {
       } else if (code === KeyCode.KEYCODE_DPAD_DOWN) {
         this.stepSelected(1);
       } else if (code === KeyCode.KEYCODE_ENTER || code === KeyCode.KEYCODE_NUMPAD_ENTER) {
-        this.openSelectedOrFirst();
+        // 仅在列表中有选中项时打开，避免与搜索框提交、工具按钮的激活冲突
+        if (this.selectedRow >= 0) {
+          this.openSelectedOrFirst();
+        }
       }
     } else if (event.type === KeyType.Up && isCtrl) {
       this.ctrlHeld = false;
@@ -132,7 +155,7 @@ struct Index {
 
   /** 在公式行之间上下移动选中项（跳过章节标题行），并滚动到可见 */
   private stepSelected(delta: number): void {
-    const rows: RowItem[] = this.getRows();
+    const rows: RowItem[] = this.viewRows;
     if (rows.length === 0) {
       return;
     }
@@ -182,7 +205,7 @@ struct Index {
 
   /** 回车：打开选中项；未选中时打开首条结果 */
   private openSelectedOrFirst(): void {
-    const rows: RowItem[] = this.getRows();
+    const rows: RowItem[] = this.viewRows;
     if (this.selectedRow >= 0 && this.selectedRow < rows.length && !rows[this.selectedRow].isHeader) {
       this.openDetail(rows[this.selectedRow].formula);
       return;
@@ -211,8 +234,8 @@ struct Index {
   }
 
   private switchTab(i: number): void {
+    // activeTab 带 @Watch，赋值后会自动重算列表并清除选中项
     this.activeTab = i;
-    this.selectedRow = -1;
   }
 
   private isFavTab(): boolean {
@@ -224,8 +247,12 @@ struct Index {
   }
 
   aboutToAppear(): void {
+    // 先按当前筛选条件生成一次列表，后续只在条件变化时重算
+    this.onFilterChanged();
     // getContext 已废弃，改用 UIContext 获取应用上下文
     const ctx: Context | undefined = this.getUIContext().getHostContext();
+    // 恢复用户选择的主题（深色 / 浅色 / 跟随系统）
+    applyThemeMode(ctx, this.themeMode);
     if (ctx === undefined) {
       return;
     }
@@ -249,14 +276,14 @@ struct Index {
     }
   }
 
-  /** 当前 Tab 的基础数据：科目 / 收藏 / 最近浏览 */
+  /** 当前 Tab 的基础数据：科目 / 收藏 / 最近浏览，并叠加考试范围过滤 */
   private getBaseByTab(): Formula[] {
     const key: string = TABS[this.activeTab].key;
+    let base: Formula[];
     if (key === '') {
       const favs: number[] = parseFavIds(this.favIds);
-      return FORMULAS.filter((f: Formula) => favs.includes(f.id));
-    }
-    if (key === 'recent') {
+      base = FORMULAS.filter((f: Formula) => favs.includes(f.id));
+    } else if (key === 'recent') {
       const ids: number[] = parseIdList(this.recentIds);
       const out: Formula[] = [];
       for (const id of ids) {
@@ -265,32 +292,43 @@ struct Index {
           out.push(f);
         }
       }
-      return out;
+      base = out;
+    } else {
+      base = FORMULAS.filter((f: Formula) => f.subject === key);
     }
-    return FORMULAS.filter((f: Formula) => f.subject === key);
+    if (this.examScope === SCOPE_ALL) {
+      return base;
+    }
+    return base.filter((f: Formula) => inScope(f.id, this.examScope));
   }
 
   /** 当前 Tab 的数据：科目过滤（或收藏/最近聚合）+ 关键词过滤 + 按相关度排序 */
   private getFiltered(): Formula[] {
-    let base: Formula[] = this.getBaseByTab();
+    const base: Formula[] = this.getBaseByTab();
     const kw: string = this.keyword.trim().toLowerCase();
-    if (kw.length > 0) {
-      const frags: string[] = splitKwFrags(kw);
-      // 搜索范围：标题 / 公式内容 / 适用条件 / 标题拼音（全拼、首字母、中英混合）
-      base = base.filter((f: Formula) => {
-        if (f.title.includes(kw) || f.formula.includes(kw) || f.condition.includes(kw)) {
-          return true;
-        }
-        const e: PinyinEntry | undefined = this.pinyinMap.get(f.id);
-        if (e === undefined) {
-          return false;
-        }
-        return matchPinyinFrags(f.title, frags, e.py, e.sx);
-      });
-      // 相关度排序（同分保持原有顺序）
-      base.sort((a: Formula, b: Formula) => this.searchScore(b, kw, frags) - this.searchScore(a, kw, frags));
+    if (kw.length === 0) {
+      return base;
     }
-    return base;
+    const frags: string[] = splitKwFrags(kw);
+    // 先筛命中项并各算一次分，再排序（原写法在比较器里重复评分）
+    const hitList: ScoredFormula[] = [];
+    for (const f of base) {
+      const cnHit: boolean = f.title.includes(kw) || f.formula.includes(kw) || f.condition.includes(kw);
+      let matched: boolean = cnHit;
+      if (!matched) {
+        const e: PinyinEntry | undefined = this.pinyinMap.get(f.id);
+        matched = e !== undefined && matchPinyinFrags(f.title, frags, e.py, e.sx);
+      }
+      if (matched) {
+        hitList.push({ formula: f, score: this.searchScore(f, kw, frags) });
+      }
+    }
+    hitList.sort((a: ScoredFormula, b: ScoredFormula) => b.score - a.score);
+    const out: Formula[] = [];
+    for (const s of hitList) {
+      out.push(s.formula);
+    }
+    return out;
   }
 
   /** 搜索相关度评分：标题前缀 3 / 标题包含 2 / 内容或条件 1；拼音命中与中文同级，取较大者 */
@@ -328,12 +366,14 @@ struct Index {
   private getGroups(): Group[] {
     const base: Formula[] = this.getFiltered();
     const groups: Group[] = [];
+    const byChapter: Map<string, Group> = new Map();
     for (const f of base) {
-      const found: Group | undefined = groups.find((g: Group) => g.chapter === f.chapter);
+      const found: Group | undefined = byChapter.get(f.chapter);
       if (found !== undefined) {
         found.items.push(f);
       } else {
         const g: Group = { chapter: f.chapter, items: [f] };
+        byChapter.set(f.chapter, g);
         groups.push(g);
       }
     }
@@ -341,7 +381,7 @@ struct Index {
   }
 
   /** 扁平化为列表行：每个章节前插一行标题行，便于键盘选中时精确滚动定位 */
-  private getRows(): RowItem[] {
+  private buildRows(): RowItem[] {
     const groups: Group[] = this.getGroups();
     const rows: RowItem[] = [];
     for (const g of groups) {
@@ -351,6 +391,16 @@ struct Index {
       }
     }
     return rows;
+  }
+
+  /**
+   * 筛选条件变化时统一重算列表：
+   * Tab / 关键词 / 考试范围 / 收藏 / 最近浏览变化都会触发，build 中只读 viewRows。
+   */
+  private onFilterChanged(): void {
+    this.favCount = parseFavIds(this.favIds).length;
+    this.selectedRow = -1;
+    this.viewRows = this.buildRows();
   }
 
   private openDetail(formula: Formula): void {
@@ -368,30 +418,36 @@ struct Index {
       ForEach(TABS, (t: TabItem, i: number) => {
         Row({ space: 10 }) {
           if (t.key === '') {
-            Text(parseFavIds(this.favIds).length > 0 ? '★' : '☆')
+            Text(this.favCount > 0 ? '★' : '☆')
               .fontSize(16)
-              .fontColor(parseFavIds(this.favIds).length > 0 ? '#F7B500' : '#8A93A0')
+              .fontColor(this.favCount > 0 ? $r('app.color.star') : $r('app.color.text_muted'))
           }
           Text(t.label)
             .fontSize(15)
             .maxLines(1)
-            .fontColor(this.activeTab === i ? '#2E6BE6' : '#3A4250')
+            .fontColor(this.activeTab === i ? $r('app.color.accent') : $r('app.color.nav_text'))
             .fontWeight(this.activeTab === i ? FontWeight.Bold : FontWeight.Normal)
           Blank()
-          if (t.key === '' && parseFavIds(this.favIds).length > 0) {
-            Text(parseFavIds(this.favIds).length.toString())
+          if (t.key === '' && this.favCount > 0) {
+            Text(this.favCount.toString())
               .fontSize(11)
-              .fontColor('#FFFFFF')
+              .fontColor($r('app.color.on_accent'))
               .padding({ left: 6, right: 6, top: 1, bottom: 1 })
               .borderRadius(999)
-              .backgroundColor('#F7B500')
+              .backgroundColor($r('app.color.star'))
           }
         }
         .width('100%')
         .padding({ left: 12, right: 12, top: 10, bottom: 10 })
         .borderRadius(10)
-        .backgroundColor(this.activeTab === i ? '#FFFFFF' : Color.Transparent)
+        .backgroundColor(this.activeTab === i ? $r('app.color.card_bg') : Color.Transparent)
         .hoverEffect(this.activeTab === i ? HoverEffect.None : HoverEffect.Highlight)
+        .focusable(true)
+        .onKeyEvent((e: KeyEvent) => {
+          if (e.type === KeyType.Down && (e.keyCode === KeyCode.KEYCODE_ENTER || e.keyCode === KeyCode.KEYCODE_SPACE)) {
+            this.switchTab(i);
+          }
+        })
         .onClick(() => {
           this.switchTab(i);
         })
@@ -400,21 +456,27 @@ struct Index {
       Blank()
 
       Divider()
-        .color('#DDE3EC')
+        .color($r('app.color.divider_strong'))
         .strokeWidth(1)
 
       Row({ space: 10 }) {
         Text('⚙')
           .fontSize(15)
-          .fontColor('#8A93A0')
+          .fontColor($r('app.color.text_muted'))
         Text('设置')
           .fontSize(14)
-          .fontColor('#5F6B7A')
+          .fontColor($r('app.color.text_secondary'))
       }
       .width('100%')
       .padding({ left: 12, right: 12, top: 9, bottom: 9 })
       .borderRadius(10)
       .hoverEffect(HoverEffect.Highlight)
+      .focusable(true)
+      .onKeyEvent((e: KeyEvent) => {
+        if (e.type === KeyType.Down && (e.keyCode === KeyCode.KEYCODE_ENTER || e.keyCode === KeyCode.KEYCODE_SPACE)) {
+          this.isShowSettings = true;
+        }
+      })
       .onClick(() => {
         this.isShowSettings = true;
       })
@@ -422,7 +484,7 @@ struct Index {
     .width(SIDEBAR_WIDTH)
     .height('100%')
     .padding(12)
-    .backgroundColor('#EDF1F6')
+    .backgroundColor($r('app.color.panel_bg'))
   }
 
   @Builder
@@ -431,12 +493,18 @@ struct Index {
       ForEach(TABS, (t: TabItem, i: number) => {
         Text(t.label)
           .fontSize(13)
-          .fontColor(this.activeTab === i ? '#2E6BE6' : '#5F6B7A')
+          .fontColor(this.activeTab === i ? $r('app.color.accent') : $r('app.color.text_secondary'))
           .fontWeight(this.activeTab === i ? FontWeight.Bold : FontWeight.Normal)
           .maxLines(1)
           .padding({ left: 10, right: 10, top: 6, bottom: 6 })
           .borderRadius(999)
-          .backgroundColor(this.activeTab === i ? '#E3EDFB' : Color.Transparent)
+          .backgroundColor(this.activeTab === i ? $r('app.color.accent_soft') : Color.Transparent)
+          .focusable(true)
+          .onKeyEvent((e: KeyEvent) => {
+            if (e.type === KeyType.Down && (e.keyCode === KeyCode.KEYCODE_ENTER || e.keyCode === KeyCode.KEYCODE_SPACE)) {
+              this.switchTab(i);
+            }
+          })
           .onClick(() => {
             this.switchTab(i);
           })
@@ -446,8 +514,15 @@ struct Index {
 
       Text('⚙')
         .fontSize(15)
-        .fontColor('#5F6B7A')
+        .fontColor($r('app.color.text_secondary'))
         .padding({ left: 8, right: 8, top: 6, bottom: 6 })
+        .borderRadius(6)
+        .focusable(true)
+        .onKeyEvent((e: KeyEvent) => {
+          if (e.type === KeyType.Down && (e.keyCode === KeyCode.KEYCODE_ENTER || e.keyCode === KeyCode.KEYCODE_SPACE)) {
+            this.isShowSettings = true;
+          }
+        })
         .onClick(() => {
           this.isShowSettings = true;
         })
@@ -458,15 +533,49 @@ struct Index {
 
   // ---------- 内容区 ----------
 
+  /** 考试范围筛选条：全部 / 数一 / 数二 / 数三 */
+  @Builder
+  ScopeBar() {
+    Row({ space: 6 }) {
+      Text('考试范围')
+        .fontSize(12)
+        .fontColor($r('app.color.text_muted'))
+        .margin({ right: 2 })
+      ForEach(SCOPE_OPTIONS, (label: string, i: number) => {
+        Text(label)
+          .fontSize(12)
+          .fontColor(this.examScope === i ? $r('app.color.accent') : $r('app.color.text_secondary'))
+          .fontWeight(this.examScope === i ? FontWeight.Bold : FontWeight.Normal)
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .borderRadius(999)
+          .backgroundColor(this.examScope === i ? $r('app.color.accent_soft') : Color.Transparent)
+          .hoverEffect(HoverEffect.Highlight)
+          .focusable(true)
+          .onKeyEvent((e: KeyEvent) => {
+            if (e.type === KeyType.Down && (e.keyCode === KeyCode.KEYCODE_ENTER || e.keyCode === KeyCode.KEYCODE_SPACE)) {
+              this.examScope = i;
+            }
+          })
+          .onClick(() => {
+            // 赋值后 @Watch 会重算列表并清除键盘选中
+            this.examScope = i;
+          })
+      }, (label: string) => label)
+      Blank()
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, bottom: 6 })
+  }
+
   @Builder
   FormulaGroupList() {
     List({ space: 12, scroller: this.listScroller }) {
-      ForEach(this.getRows(), (row: RowItem, index: number) => {
+      ForEach(this.viewRows, (row: RowItem, index: number) => {
         ListItem() {
           if (row.isHeader) {
             Text(row.chapter)
               .fontSize(14)
-              .fontColor('#5F6B7A')
+              .fontColor($r('app.color.text_secondary'))
               .width('100%')
           } else {
             FormulaCard({
@@ -479,29 +588,58 @@ struct Index {
             })
           }
         }
-      }, (row: RowItem, index: number) => row.isHeader ? ('h' + index) : ('f' + row.formula.id))
+      }, (row: RowItem, index: number) => row.isHeader ? ('h' + row.chapter) : ('f' + row.formula.id))
     }
     .width('100%')
     .layoutWeight(1)
     .padding({ left: 16, right: 16, top: 4, bottom: 24 })
     .scrollBar(BarState.Auto)
-    .cachedCount(8)
+    .cachedCount(12)
+  }
+
+  /** 空态标题（按「范围 / 收藏 / 最近 / 搜索」优先级给出） */
+  private emptyTitle(): string {
+    if (this.keyword.trim().length > 0) {
+      return '没有找到公式';
+    }
+    if (this.isFavTab()) {
+      return '这里还是空的';
+    }
+    if (this.isRecentTab()) {
+      return '这里还是空的';
+    }
+    if (this.examScope !== SCOPE_ALL) {
+      return '当前考试范围下暂无公式';
+    }
+    return '没有找到公式';
+  }
+
+  /** 空态提示（与标题对应，给出下一步动作） */
+  private emptyHint(): string {
+    if (this.keyword.trim().length > 0) {
+      return '换个关键词试试';
+    }
+    if (this.isFavTab()) {
+      return '去列表里点亮 ☆ 收藏喜欢的公式吧';
+    }
+    if (this.isRecentTab()) {
+      return '打开过的公式会出现在这里';
+    }
+    if (this.examScope !== SCOPE_ALL) {
+      return '切换到「全部」范围看看';
+    }
+    return '换个关键词试试';
   }
 
   @Builder
   EmptyState() {
     Column({ space: 10 }) {
-      Text(this.keyword.trim().length === 0 && (this.isFavTab() || this.isRecentTab())
-        ? '这里还是空的'
-        : '没有找到公式')
+      Text(this.emptyTitle())
         .fontSize(16)
-        .fontColor('#8A93A0')
-      Text(this.keyword.trim().length > 0
-        ? '换个关键词试试'
-        : (this.isFavTab() ? '去列表里点亮 ☆ 收藏喜欢的公式吧'
-          : (this.isRecentTab() ? '打开过的公式会出现在这里' : '换个关键词试试')))
+        .fontColor($r('app.color.text_muted'))
+      Text(this.emptyHint())
         .fontSize(13)
-        .fontColor('#A8B0BC')
+        .fontColor($r('app.color.text_faint'))
     }
     .width('100%')
     .layoutWeight(1)
@@ -511,7 +649,8 @@ struct Index {
   @Builder
   ContentArea() {
     Column() {
-      if (this.getGroups().length === 0) {
+      this.ScopeBar()
+      if (this.viewRows.length === 0) {
         this.EmptyState()
       } else {
         this.FormulaGroupList()
@@ -576,17 +715,23 @@ struct Index {
           Text('口袋公式本')
             .fontSize(20)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#1F2430')
+            .fontColor($r('app.color.text_primary'))
             .maxLines(1)
           Blank()
           Text('开始自测')
             .fontSize(13)
-            .fontColor('#2E6BE6')
+            .fontColor($r('app.color.accent'))
             .maxLines(1)
             .padding({ left: 12, right: 12, top: 7, bottom: 7 })
-            .backgroundColor('#E3EDFB')
+            .backgroundColor($r('app.color.accent_soft'))
             .borderRadius(999)
             .hoverEffect(HoverEffect.Highlight)
+            .focusable(true)
+            .onKeyEvent((e: KeyEvent) => {
+              if (e.type === KeyType.Down && (e.keyCode === KeyCode.KEYCODE_ENTER || e.keyCode === KeyCode.KEYCODE_SPACE)) {
+                this.startQuiz();
+              }
+            })
             .onClick(() => {
               this.startQuiz();
             })
@@ -623,7 +768,7 @@ struct Index {
             Divider()
               .vertical(true)
               .strokeWidth(1)
-              .color('#E0E5EC')
+              .color($r('app.color.divider_strong'))
               .height('100%')
           }
           Column() {
@@ -655,7 +800,7 @@ struct Index {
     .hideTitleBar(true)
     .width('100%')
     .height('100%')
-    .backgroundColor('#F7F8FA')
+    .backgroundColor($r('app.color.page_bg'))
     .onKeyEvent((event: KeyEvent) => {
       this.handleKeyEvent(event);
     })
@@ -671,7 +816,7 @@ struct Index {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F7F8FA')
+    .backgroundColor($r('app.color.page_bg'))
     .bindContentCover(this.isQuizShow, this.QuizBuilder(), {
       modalTransition: ModalTransition.DEFAULT,
       onDisappear: () => {

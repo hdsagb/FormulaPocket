@@ -2,6 +2,7 @@
  * 公式卡片：列表页使用。
  * 收藏状态通过 @StorageLink 与 AppStorage('favIds') 双向同步，星标点击即时刷新。
  * 标题与正文区域点击打开详情；星标区域独立，两者互不影响。
+ * 颜色全部取自 app.color.* 资源，浅色/深色模式自动切换。
  */
 import { Formula, parseFavIds, toggleFavId } from '../model/Formula';
 
@@ -37,13 +38,13 @@ export struct FormulaCard {
           Text() {
             Span(this.formula.title.substring(0, this.hitIndex()))
             Span(this.formula.title.substring(this.hitIndex(), this.hitIndex() + this.keyword.length))
-              .fontColor('#2E6BE6')
+              .fontColor($r('app.color.accent'))
               .fontWeight(FontWeight.Bolder)
             Span(this.formula.title.substring(this.hitIndex() + this.keyword.length))
           }
           .fontSize(Math.round(17 * this.fontScale))
           .fontWeight(FontWeight.Bold)
-          .fontColor('#1F2430')
+          .fontColor($r('app.color.text_primary'))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(1)
@@ -54,7 +55,7 @@ export struct FormulaCard {
           Text(this.formula.title)
             .fontSize(Math.round(17 * this.fontScale))
             .fontWeight(FontWeight.Bold)
-            .fontColor('#1F2430')
+            .fontColor($r('app.color.text_primary'))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
@@ -64,7 +65,7 @@ export struct FormulaCard {
         }
         Text(this.isFav() ? '★' : '☆')
           .fontSize(20)
-          .fontColor(this.isFav() ? '#F7B500' : '#B0B6BF')
+          .fontColor(this.isFav() ? $r('app.color.star') : $r('app.color.star_off'))
           .onClick(() => {
             this.favIds = toggleFavId(this.favIds, this.formula.id);
           })
@@ -74,13 +75,13 @@ export struct FormulaCard {
       Column({ space: 8 }) {
         Text(this.formula.formula)
           .fontSize(Math.round(16 * this.fontScale))
-          .fontColor('#333B4A')
+          .fontColor($r('app.color.text_body'))
           .copyOption(CopyOptions.InApp)
           .width('100%')
 
         Text('适用：' + this.formula.condition)
           .fontSize(Math.round(13 * this.fontScale))
-          .fontColor('#8A93A0')
+          .fontColor($r('app.color.text_muted'))
           .maxLines(2)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .width('100%')
@@ -91,8 +92,8 @@ export struct FormulaCard {
       })
     }
     .padding(12)
-    .border({ width: 2, color: this.selected ? '#2E6BE6' : Color.Transparent, radius: 12 })
-    .backgroundColor('#FFFFFF')
+    .border({ width: 2, color: this.selected ? $r('app.color.accent') : Color.Transparent, radius: 12 })
+    .backgroundColor($r('app.color.card_bg'))
     .hoverEffect(HoverEffect.Highlight)
   }
 }

@@ -1,8 +1,9 @@
 /**
  * 详情浮层内容（bindSheet 半模态）：
- * 大字号公式居中展示，适合截图；带章节标签、收藏星标与关闭按钮。
+ * 大字号公式居中展示，适合截图；带章节标签、考试范围、收藏星标与关闭按钮。
  */
 import { Formula, parseFavIds, toggleFavId } from '../model/Formula';
+import { scopeLabel } from '../model/ScopeIndex';
 import { pasteboard } from '@kit.BasicServicesKit';
 
 @Component
@@ -36,20 +37,28 @@ export struct FormulaDetailSheet {
 
   build() {
     Column({ space: 12 }) {
-      // 顶部：章节标签 + 星标 + 关闭
+      // 顶部：章节标签 + 考试范围 + 星标 + 关闭
       Row({ space: 12 }) {
         Text(this.formula.subject + ' · ' + this.formula.chapter)
           .fontSize(14)
-          .fontColor('#5F6B7A')
+          .fontColor($r('app.color.text_secondary'))
           .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-          .backgroundColor('#EEF2F7')
+          .backgroundColor($r('app.color.chip_bg'))
           .borderRadius(999)
+        if (scopeLabel(this.formula.id) !== '通用') {
+          Text(scopeLabel(this.formula.id))
+            .fontSize(12)
+            .fontColor($r('app.color.accent'))
+            .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+            .backgroundColor($r('app.color.accent_soft'))
+            .borderRadius(999)
+        }
         Blank()
         Text('复制')
           .fontSize(13)
-          .fontColor('#2E6BE6')
+          .fontColor($r('app.color.accent'))
           .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-          .backgroundColor('#E3EDFB')
+          .backgroundColor($r('app.color.accent_soft'))
           .borderRadius(999)
           .hoverEffect(HoverEffect.Highlight)
           .onClick(() => {
@@ -57,13 +66,13 @@ export struct FormulaDetailSheet {
           })
         Text(this.isFav() ? '★' : '☆')
           .fontSize(24)
-          .fontColor(this.isFav() ? '#F7B500' : '#B0B6BF')
+          .fontColor(this.isFav() ? $r('app.color.star') : $r('app.color.star_off'))
           .onClick(() => {
             this.favIds = toggleFavId(this.favIds, this.formula.id);
           })
         Text('✕')
           .fontSize(18)
-          .fontColor('#8A93A0')
+          .fontColor($r('app.color.text_muted'))
           .onClick(() => {
             this.onClose();
           })
@@ -76,7 +85,7 @@ export struct FormulaDetailSheet {
           Text(line)
             .fontSize(Math.round(32 * this.fontScale))
             .fontWeight(FontWeight.Medium)
-            .fontColor('#1F2430')
+            .fontColor($r('app.color.text_primary'))
             .textAlign(TextAlign.Center)
             .copyOption(CopyOptions.InApp)
             .width('100%')
@@ -86,12 +95,12 @@ export struct FormulaDetailSheet {
       .padding({ top: 16, bottom: 16 })
 
       Divider()
-        .color('#E5E9F0')
+        .color($r('app.color.divider'))
         .width('100%')
 
       Text('适用条件：' + this.formula.condition)
         .fontSize(Math.round(15 * this.fontScale))
-        .fontColor('#6B7482')
+        .fontColor($r('app.color.text_secondary'))
         .width('100%')
     }
     .padding(24)

@@ -23,18 +23,31 @@ export const EMPTY_FORMULA: Formula = {
 
 /**
  * 收藏 id 集合以 JSON 字符串形式存储（PersistentStorage 仅稳定支持基础类型）。
+ * 列表页每帧都会判断收藏状态，这里按「原始字符串」缓存解析结果，避免重复 JSON.parse。
+ * 约定：返回值只读，调用方需要改写时必须先 slice()（见 toggleFavId）。
  */
+let favRawCache: string = '';
+let favArrayCache: number[] = [];
+
 export function parseFavIds(favIds: string): number[] {
-  try {
-    return JSON.parse(favIds) as number[];
-  } catch (err) {
-    return [];
+  if (favIds === favRawCache) {
+    return favArrayCache;
   }
+  let parsed: number[] = [];
+  try {
+    parsed = JSON.parse(favIds) as number[];
+  } catch (err) {
+    parsed = [];
+  }
+  favRawCache = favIds;
+  favArrayCache = parsed;
+  return parsed;
 }
 
 /** 切换某条公式的收藏状态，返回新的 JSON 字符串 */
 export function toggleFavId(favIds: string, id: number): string {
-  const arr: number[] = parseFavIds(favIds);
+  // slice() 复制一份，避免原地修改命中缓存数组导致缓存失效
+  const arr: number[] = parseFavIds(favIds).slice();
   const idx: number = arr.indexOf(id);
   if (idx >= 0) {
     arr.splice(idx, 1);
@@ -96,14 +109,14 @@ export function addQuizStat(raw: string, id: number, ok: boolean): string {
 }
 
 /**
- * 公式数据：共 105 条（高数 45 / 线代 26 / 概率论 34）。
+ * 公式数据：共 120 条（高数 55 / 线代 27 / 概率论 38）。
  * - id 1~30 为初版数据，保持不变（兼容已收藏条目）
  * - 新增条目 id 从 31 起
  * - 数组按「科目 → 章节」聚合排序，保证列表分组连续
  * - 公式统一使用 Unicode 数学符号，\n 表示换行；标注「数一」等表示考试范围
  */
 export const FORMULAS: Formula[] = [
-  // ================= 高等数学（45 条） =================
+  // ================= 高等数学（55 条） =================
   // ---- 极限 ----
   {
     id: 1, subject: '高数', chapter: '极限', title: '两个重要极限',
@@ -211,6 +224,26 @@ export const FORMULAS: Formula[] = [
     formula: 'f′(x0) = 0 且 f″(x0) ≠ 0：\nf″(x0) < 0 取极大值；f″(x0) > 0 取极小值',
     condition: 'f″(x0) = 0 时失效，需改用第一充分条件（看两侧变号）'
   },
+  {
+    id: 106, subject: '高数', chapter: '一元微分', title: '罗尔定理',
+    formula: 'f(a) = f(b) ⇒ 存在 ξ∈(a,b)，使 f′(ξ) = 0',
+    condition: 'f 在 [a,b] 连续、(a,b) 内可导，且 f(a) = f(b)'
+  },
+  {
+    id: 107, subject: '高数', chapter: '一元微分', title: '单调性与凹凸性判定',
+    formula: 'f′(x) > 0：单调递增；f′(x) < 0：单调递减\nf″(x) > 0：曲线凹（下凸）；f″(x) < 0：曲线凸（上凸）',
+    condition: '区间内导数符号保持不变；拐点需 f″ 变号，先求 f″ = 0 或不存在点'
+  },
+  {
+    id: 108, subject: '高数', chapter: '一元微分', title: '极值第一充分条件',
+    formula: 'f′(x0) = 0 或不存在：\n左侧正、右侧负 ⇒ 极大值；左负右正 ⇒ 极小值\n两侧同号 ⇒ 不是极值',
+    condition: 'f 在 x0 的去心邻域连续，且 f′ 在该邻域内存在'
+  },
+  {
+    id: 109, subject: '高数', chapter: '一元微分', title: '曲率与曲率半径',
+    formula: '直角坐标：K = |y″| / (1 + y′²)^(3/2)\n参数方程：K = |x′y″ - y′x″| / (x′² + y′²)^(3/2)\n曲率半径 R = 1/K',
+    condition: '曲线二阶可导；数一、数二重点，数三不考'
+  },
   // ---- 一元积分 ----
   {
     id: 8, subject: '高数', chapter: '一元积分', title: '牛顿-莱布尼茨公式',
@@ -294,6 +327,16 @@ export const FORMULAS: Formula[] = [
     formula: '∬_Σ P dydz + Q dzdx + R dxdy\n= ∭Ω (∂P/∂x + ∂Q/∂y + ∂R/∂z) dV',
     condition: '数一；Σ 为闭曲面 Ω 的外侧'
   },
+  {
+    id: 110, subject: '高数', chapter: '多元积分', title: '三重积分',
+    formula: '柱坐标：∭Ω f dV = ∫dθ ∫dr ∫f(rcosθ, rsinθ, z)·r dz\n球坐标：∭Ω f dV = ∫dφ ∫dθ ∫f(ρ, φ, θ)·ρ²·sinφ dρ',
+    condition: '柱坐标 dV = r dr dθ dz；球坐标 dV = ρ²sinφ dρ dφ dθ；数一'
+  },
+  {
+    id: 111, subject: '高数', chapter: '多元积分', title: '曲线积分',
+    formula: '第一类：∫L f ds = ∫[α,β] f(x(t), y(t))·√(x′²(t) + y′²(t)) dt\n第二类：∫L P dx + Q dy = ∫[α,β] (P·x′(t) + Q·y′(t)) dt',
+    condition: '第一类与方向无关；第二类反向变号；数一'
+  },
   // ---- 常微分方程 ----
   {
     id: 59, subject: '高数', chapter: '常微分方程', title: '一阶线性方程通解',
@@ -304,6 +347,16 @@ export const FORMULAS: Formula[] = [
     id: 60, subject: '高数', chapter: '常微分方程', title: '二阶常系数线性方程',
     formula: 'y″ + py′ + qy = 0，特征根 r1, r2：\n异根：y = C1·e^(r1x) + C2·e^(r2x)\n重根：y = (C1 + C2x)·e^(rx)\n复根 α±βi：y = e^(αx)(C1·cosβx + C2·sinβx)\n非齐次特解设 y* = x^k·Q_m(x)·e^(λx)',
     condition: 'k 为 λ 作为特征根的重数（0、1 或 2）'
+  },
+  {
+    id: 114, subject: '高数', chapter: '常微分方程', title: '可分离变量与齐次方程',
+    formula: 'dy/dx = f(x)·g(y) ⇒ ∫dy/g(y) = ∫f(x)dx\n齐次方程：令 u = y/x，则 x·du/dx = φ(u) - u',
+    condition: '分离时要求 g(y) ≠ 0，g(y) = 0 的常数解需单独检查'
+  },
+  {
+    id: 115, subject: '高数', chapter: '常微分方程', title: '可降阶的高阶方程',
+    formula: 'y″ = f(x)：连续积分两次\ny″ = f(x, y′)：令 p = y′，化为 p′ = f(x, p)\ny″ = f(y, y′)：令 p = y′，则 y″ = p·dp/dy',
+    condition: '按「缺 y」「缺 x」对号入座；数一、数二'
   },
   // ---- 级数 ----
   {
@@ -336,7 +389,17 @@ export const FORMULAS: Formula[] = [
     formula: 'ρ = lim(n→∞) |a_(n+1)/a_n|，R = 1/ρ\n收敛区间 (-R, R)，端点需单独判别',
     condition: 'ρ = 0 时 R = +∞；区间内绝对收敛（阿贝尔定理）'
   },
-  // ================= 线性代数（26 条） =================
+  {
+    id: 112, subject: '高数', chapter: '级数', title: '傅里叶级数',
+    formula: 'f(x) ~ a0/2 + ∑(n=1→∞) [a_n·cos nx + b_n·sin nx]\na_n = (1/π)∫[-π,π] f(x)cos nx dx\nb_n = (1/π)∫[-π,π] f(x)sin nx dx',
+    condition: '周期 2π 的函数，满足狄利克雷条件时收敛；数一'
+  },
+  {
+    id: 113, subject: '高数', chapter: '级数', title: '常用幂级数展开',
+    formula: '1/(1-x) = ∑x^n\ne^x = ∑x^n/n!，sinx = ∑(-1)^n·x^(2n+1)/(2n+1)!\ncosx = ∑(-1)^n·x^(2n)/(2n)!，ln(1+x) = ∑(-1)^(n-1)·x^n/n',
+    condition: '均在 |x| < 1 或收敛区间内成立；逐项求导、逐项积分可得新展开式'
+  },
+  // ================= 线性代数（27 条） =================
   // ---- 行列式 ----
   {
     id: 11, subject: '线代', chapter: '行列式', title: '行列式乘法性质',
@@ -393,6 +456,11 @@ export const FORMULAS: Formula[] = [
     id: 71, subject: '线代', chapter: '矩阵', title: '伴随矩阵的秩',
     formula: 'r(A*) = n（当 r(A) = n）\nr(A*) = 1（当 r(A) = n-1）\nr(A*) = 0（当 r(A) < n-1）',
     condition: 'n ≥ 2；由 AA* = |A|E 推出'
+  },
+  {
+    id: 120, subject: '线代', chapter: '矩阵', title: '初等变换与初等矩阵',
+    formula: '对 A 作一次初等行变换 ⇔ 左乘相应的初等矩阵 E\nA 可逆 ⇔ A 可表示为若干初等矩阵的乘积',
+    condition: '初等矩阵均可逆：倍乘的逆为取倒数，互换的逆为自身'
   },
   // ---- 向量组 ----
   {
@@ -473,7 +541,7 @@ export const FORMULAS: Formula[] = [
     formula: 'f = x^T·A·x 正定 ⇔ A 的特征值全 > 0\n⇔ 顺序主子式全 > 0 ⇔ 正惯性指数 = n',
     condition: 'A 必为实对称矩阵'
   },
-  // ================= 概率论与数理统计（34 条） =================
+  // ================= 概率论与数理统计（38 条） =================
   // ---- 随机事件 ----
   {
     id: 21, subject: '概率论', chapter: '随机事件', title: '加法公式',
@@ -526,6 +594,11 @@ export const FORMULAS: Formula[] = [
     formula: 'D(X) = E(X^2) - [E(X)]^2',
     condition: 'E(X^2) 存在'
   },
+  {
+    id: 116, subject: '概率论', chapter: '一维随机变量', title: '随机变量函数的分布',
+    formula: 'Y = g(X)：F_Y(y) = P(g(X) ≤ y)\ng 单调可导时：f_Y(y) = f_X(h(y))·|h′(y)|，h 为 g 的反函数',
+    condition: 'g 非单调时先求分布函数 F_Y(y)，再对 y 求导得密度'
+  },
   // ---- 常见分布 ----
   {
     id: 85, subject: '概率论', chapter: '常见分布', title: '常见离散分布的期望与方差',
@@ -547,6 +620,11 @@ export const FORMULAS: Formula[] = [
     formula: 'P(X > s + t | X > s) = P(X > t)',
     condition: '连续型分布中只有指数分布具有该性质'
   },
+  {
+    id: 117, subject: '概率论', chapter: '常见分布', title: '正态分布',
+    formula: 'X ~ N(μ, σ²)：f(x) = 1/(√(2π)·σ)·e^(-(x-μ)²/(2σ²))\n标准化：Z = (X - μ)/σ ~ N(0, 1)\nP(X ≤ a) = Φ((a - μ)/σ)',
+    condition: 'Φ(-x) = 1 - Φ(x)；P(|X - μ| < 3σ) ≈ 0.9974（3σ 原则）'
+  },
   // ---- 多维随机变量 ----
   {
     id: 89, subject: '概率论', chapter: '多维随机变量', title: '二维正态分布',
@@ -567,6 +645,11 @@ export const FORMULAS: Formula[] = [
     id: 92, subject: '概率论', chapter: '多维随机变量', title: '卷积公式',
     formula: 'Z = X + Y 的密度函数\nf_Z(z) = ∫(-∞→+∞) f(x, z - x) dx',
     condition: '要求 X、Y 相互独立'
+  },
+  {
+    id: 118, subject: '概率论', chapter: '多维随机变量', title: '二维随机变量函数的分布',
+    formula: 'Z = X + Y（独立）：f_Z(z) = ∫f_X(x)·f_Y(z - x)dx\n最大值 / 最小值（独立同分布）：\nF_max(z) = [F(z)]^n，F_min(z) = 1 - [1 - F(z)]^n',
+    condition: '卷积公式要求独立；max / min 公式要求各变量独立同分布'
   },
   // ---- 数字特征 ----
   {
@@ -598,6 +681,11 @@ export const FORMULAS: Formula[] = [
     id: 96, subject: '概率论', chapter: '数字特征', title: '切比雪夫不等式',
     formula: 'P(|X - E(X)| ≥ ε) ≤ D(X)/ε²\n等价：P(|X - E(X)| < ε) ≥ 1 - D(X)/ε²',
     condition: '只知道期望与方差时的概率估计工具'
+  },
+  {
+    id: 119, subject: '概率论', chapter: '数字特征', title: '和的方差与独立性',
+    formula: 'D(X + Y) = D(X) + D(Y) + 2Cov(X, Y)\nX、Y 独立时：D(X ± Y) = D(X) + D(Y)',
+    condition: '只有独立（或 Cov = 0）时方差才可直接相加'
   },
   // ---- 大数定律 ----
   {

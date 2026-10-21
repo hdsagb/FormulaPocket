@@ -4,6 +4,7 @@
  * - 空格 / 点击卡片显示答案；← 没记住，→ 记住了
  * - 结果写入 PersistentStorage('quizStats')，错题可一键重练
  * - Esc 退出
+ * 颜色取自 app.color.*，随浅色/深色模式自动切换。
  */
 import { Formula, EMPTY_FORMULA, addQuizStat } from '../model/Formula';
 import { KeyCode } from '@ohos.multimodalInput.keyCode';
@@ -126,16 +127,16 @@ export struct FlashcardView {
       Text('闪卡自测')
         .fontSize(20)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#1F2430')
+        .fontColor($r('app.color.text_primary'))
       if (!this.finished && this.list.length > 0) {
         Text(`${this.idx + 1} / ${this.list.length}`)
           .fontSize(14)
-          .fontColor('#5F6B7A')
+          .fontColor($r('app.color.text_secondary'))
       }
       Blank()
       Text('✕')
         .fontSize(20)
-        .fontColor('#8A93A0')
+        .fontColor($r('app.color.text_muted'))
         .padding(6)
         .onClick(() => {
           this.onExit();
@@ -149,25 +150,25 @@ export struct FlashcardView {
     Column({ space: 12 }) {
       Text(this.cur().subject + ' · ' + this.cur().chapter)
         .fontSize(13)
-        .fontColor('#5F6B7A')
+        .fontColor($r('app.color.text_secondary'))
         .padding({ left: 10, right: 10, top: 4, bottom: 4 })
-        .backgroundColor('#EEF2F7')
+        .backgroundColor($r('app.color.chip_bg'))
         .borderRadius(999)
       Text(this.cur().title)
         .fontSize(Math.round(34 * this.fontScale))
         .fontWeight(FontWeight.Bold)
-        .fontColor('#1F2430')
+        .fontColor($r('app.color.text_primary'))
         .textAlign(TextAlign.Center)
         .width('100%')
       if (!this.revealed) {
         Text('点击卡片或按空格显示答案')
           .fontSize(13)
-          .fontColor('#A8B0BC')
+          .fontColor($r('app.color.text_faint'))
       }
     }
     .width('100%')
     .padding({ top: 28, bottom: 28, left: 16, right: 16 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor($r('app.color.card_bg'))
     .borderRadius(16)
     .onClick(() => {
       if (!this.revealed) {
@@ -183,7 +184,7 @@ export struct FlashcardView {
         Text(line)
           .fontSize(Math.round(30 * this.fontScale))
           .fontWeight(FontWeight.Medium)
-          .fontColor('#1F2430')
+          .fontColor($r('app.color.text_primary'))
           .textAlign(TextAlign.Center)
           .copyOption(CopyOptions.InApp)
           .width('100%')
@@ -191,7 +192,7 @@ export struct FlashcardView {
 
       Text('适用：' + this.cur().condition)
         .fontSize(13)
-        .fontColor('#8A93A0')
+        .fontColor($r('app.color.text_muted'))
         .textAlign(TextAlign.Center)
         .width('100%')
     }
@@ -205,8 +206,8 @@ export struct FlashcardView {
       Button('没记住  ←')
         .type(ButtonType.Normal)
         .fontSize(15)
-        .fontColor('#3A4250')
-        .backgroundColor('#EEF1F5')
+        .fontColor($r('app.color.nav_text'))
+        .backgroundColor($r('app.color.btn_secondary_bg'))
         .borderRadius(12)
         .height(46)
         .layoutWeight(1)
@@ -216,8 +217,8 @@ export struct FlashcardView {
       Button('记住了  →')
         .type(ButtonType.Normal)
         .fontSize(15)
-        .fontColor('#FFFFFF')
-        .backgroundColor('#2E6BE6')
+        .fontColor($r('app.color.on_accent'))
+        .backgroundColor($r('app.color.accent'))
         .borderRadius(12)
         .height(46)
         .layoutWeight(1)
@@ -234,25 +235,25 @@ export struct FlashcardView {
       Text('本轮完成')
         .fontSize(22)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#1F2430')
+        .fontColor($r('app.color.text_primary'))
       Text(`共 ${this.roundTotal} 条 · 记住 ${this.rightCount} · 没记住 ${this.wrongCount}`)
         .fontSize(15)
-        .fontColor('#5F6B7A')
+        .fontColor($r('app.color.text_secondary'))
       Text(`${this.accuracy()}%`)
         .fontSize(40)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#2E6BE6')
+        .fontColor($r('app.color.accent'))
       Text('正确率')
         .fontSize(13)
-        .fontColor('#A8B0BC')
+        .fontColor($r('app.color.text_faint'))
 
       Row({ space: 16 }) {
         if (this.wrongCount > 0) {
           Button('重练错题')
             .type(ButtonType.Normal)
             .fontSize(15)
-            .fontColor('#2E6BE6')
-            .backgroundColor('#E3EDFB')
+            .fontColor($r('app.color.accent'))
+            .backgroundColor($r('app.color.accent_soft'))
             .borderRadius(12)
             .height(46)
             .layoutWeight(1)
@@ -263,8 +264,8 @@ export struct FlashcardView {
         Button('完成')
           .type(ButtonType.Normal)
           .fontSize(15)
-          .fontColor('#FFFFFF')
-          .backgroundColor('#2E6BE6')
+          .fontColor($r('app.color.on_accent'))
+          .backgroundColor($r('app.color.accent'))
           .borderRadius(12)
           .height(46)
           .layoutWeight(1)
@@ -276,7 +277,7 @@ export struct FlashcardView {
     }
     .width('100%')
     .padding({ top: 40, bottom: 40, left: 24, right: 24 })
-    .backgroundColor('#FFFFFF')
+    .backgroundColor($r('app.color.card_bg'))
     .borderRadius(16)
   }
 
@@ -298,7 +299,7 @@ export struct FlashcardView {
     .width('100%')
     .height('100%')
     .padding(28)
-    .backgroundColor('#F7F8FA')
+    .backgroundColor($r('app.color.page_bg'))
     .focusable(true)
     .defaultFocus(true)
     .onKeyEvent((event: KeyEvent) => {

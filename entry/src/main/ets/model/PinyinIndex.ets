@@ -1,5 +1,5 @@
 /**
- * 标题拼音索引：由 Formula.ets 的 105 条标题预生成（脚本产出，勿手工编辑）。
+ * 标题拼音索引：由 Formula.ets 的 120 条标题预生成（脚本产出，勿手工编辑）。
  * py = 全拼小写连写；sx = 拼音首字母串（英文/数字原样保留首字符）。
  * 用于支持全中文 / 全拼音 / 拼音首字母 / 中英混合搜索。
  */
@@ -32,7 +32,7 @@ export const PINYIN_INDEX: PinyinEntry[] = [
   { id: 42, py: 'changjianhanshugaojiedaoshu', sx: 'cjhsgjds' }, // 常见函数高阶导数
   { id: 43, py: 'kexizhongzhidingli', sx: 'kxzzdl' }, // 柯西中值定理
   { id: 44, py: 'jizhidierchongfentiaojian', sx: 'jzdecftj' }, // 极值第二充分条件
-  { id: 8, py: 'niudunlaibunicigongshi', sx: 'nd-lbncgs' }, // 牛顿-莱布尼茨公式
+  { id: 8, py: 'niudunlaibunicigongshi', sx: 'ndlbncgs' }, // 牛顿-莱布尼茨公式
   { id: 9, py: 'fenbujifenfa', sx: 'fbjff' }, // 分部积分法
   { id: 45, py: 'jibenjifenbiao', sx: 'jbjfb' }, // 基本积分表
   { id: 46, py: 'huanyuanjifenfa', sx: 'hyjff' }, // 换元积分法
@@ -109,13 +109,29 @@ export const PINYIN_INDEX: PinyinEntry[] = [
   { id: 30, py: 'dulitongfenbuzhongxinjixiandingli', sx: 'dltfbzxjxdl' }, // 独立同分布中心极限定理
   { id: 97, py: 'qiebixuefuyuxinqindashudinglv', sx: 'qbxfyxqdsdl' }, // 切比雪夫与辛钦大数定律
   { id: 98, py: 'bonulidashudinglv', sx: 'bnldsdl' }, // 伯努利大数定律
-  { id: 99, py: 'dimofulapulasidingli', sx: 'dmf-lplsdl' }, // 棣莫弗-拉普拉斯定理
+  { id: 99, py: 'dimofulapulasidingli', sx: 'dmflplsdl' }, // 棣莫弗-拉普拉斯定理
   { id: 100, py: 'fenbu', sx: 'fb' }, // χ² 分布
   { id: 101, py: 'zhengtaizongtidechouyangfenbu', sx: 'ztztdcyfb' }, // 正态总体的抽样分布
   { id: 102, py: 'yangbenfangchadeqiwang', sx: 'ybfcdqw' }, // 样本方差的期望
   { id: 103, py: 'jugujiyuzuidashiranguji', sx: 'jgjyzdsrgj' }, // 矩估计与最大似然估计
   { id: 104, py: 'zhengtaijunzhidezhixinqujian', sx: 'ztjzdzxqj' }, // 正态均值的置信区间
   { id: 105, py: 'jiashejianyandeliangleicuowu', sx: 'jsjydllcw' }, // 假设检验的两类错误
+  // ---- 2026 扩充（id 106-120） ----
+  { id: 106, py: 'luoerdinli', sx: 'ledl' }, // 罗尔定理
+  { id: 107, py: 'dandiaoxingyuaotuxingpanding', sx: 'ddxyatxpd' }, // 单调性与凹凸性判定
+  { id: 108, py: 'jiazhidiyichongfentiaojian', sx: 'jzdycftj' }, // 极值第一充分条件
+  { id: 109, py: 'qulvyuqulvbangjing', sx: 'qlyqlbj' }, // 曲率与曲率半径
+  { id: 110, py: 'sanzhongjifen', sx: 'szjf' }, // 三重积分
+  { id: 111, py: 'quxianjifen', sx: 'qxjf' }, // 曲线积分
+  { id: 112, py: 'fuliyiejishu', sx: 'flyjs' }, // 傅里叶级数
+  { id: 113, py: 'changyongmijishuzhankai', sx: 'cymjszk' }, // 常用幂级数展开
+  { id: 114, py: 'kefenlibianliangyuqicifangcheng', sx: 'kflblyqcfc' }, // 可分离变量与齐次方程
+  { id: 115, py: 'kejiangjiedegaojiefangcheng', sx: 'kjjdgjfc' }, // 可降阶的高阶方程
+  { id: 116, py: 'suijibianlianghanshudefenbu', sx: 'sjblhsdfb' }, // 随机变量函数的分布
+  { id: 117, py: 'zhengtaifenbu', sx: 'ztfb' }, // 正态分布
+  { id: 118, py: 'erweisuijibianlianghanshudefenbu', sx: 'ewsjblhsdfb' }, // 二维随机变量函数的分布
+  { id: 119, py: 'hedefangchayudulixing', sx: 'hdfcydlx' }, // 和的方差与独立性
+  { id: 120, py: 'chudengbianhuanyuchudengjuzhen', sx: 'cdbhycdjz' }, // 初等变换与初等矩阵
 ];
 
 /** 构建 id -> 拼音条目 的快速查询表 */

@@ -1,10 +1,12 @@
 /**
  * 设置面板（bindSheet 半模态）：
+ * - 主题：跟随系统 / 浅色 / 深色，立即生效并持久化到 AppStorage('themeMode')
  * - 字号缩放（紧凑 / 标准 / 大），持久化到 AppStorage('fontScale')
  * - 清除收藏、清除自测记录（数据均在本地）
  * - 关于：应用名与版本号
  */
-import { bundleManager } from '@kit.AbilityKit';
+import { bundleManager, common } from '@kit.AbilityKit';
+import { THEME_LABELS, THEME_OPTIONS, THEME_SYSTEM, applyThemeMode, saveThemeToPrefs } from '../model/Theme';
 
 @Component
 export struct SettingsSheet {
@@ -13,6 +15,7 @@ export struct SettingsSheet {
   @StorageLink('favIds') favIds: string = '[]';
   @StorageLink('quizStats') quizStats: string = '{}';
   @StorageLink('fontScale') fontScale: number = 1;
+  @StorageLink('themeMode') themeMode: string = THEME_SYSTEM;
 
   private versionName(): string {
     try {
@@ -20,7 +23,7 @@ export struct SettingsSheet {
         bundleManager.getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
       return info.versionName;
     } catch (err) {
-      return '1.1.0';
+      return '—';
     }
   }
 
@@ -32,17 +35,41 @@ export struct SettingsSheet {
     }
   }
 
+  /** 切换主题：写持久化 + 立即切换应用颜色模式 + 同步一份到 preferences（供冷启动提前生效） */
+  private chooseTheme(mode: string): void {
+    this.themeMode = mode;
+    const ctx: common.Context | undefined = this.getUIContext().getHostContext();
+    applyThemeMode(ctx, mode);
+    saveThemeToPrefs(ctx, mode);
+  }
+
+  @Builder
+  ThemeOption(label: string, mode: string) {
+    Text(label)
+      .fontSize(14)
+      .fontColor(this.themeMode === mode ? $r('app.color.accent') : $r('app.color.text_secondary'))
+      .fontWeight(this.themeMode === mode ? FontWeight.Bold : FontWeight.Normal)
+      .textAlign(TextAlign.Center)
+      .height(34)
+      .layoutWeight(1)
+      .borderRadius(9)
+      .backgroundColor(this.themeMode === mode ? $r('app.color.accent_soft') : Color.Transparent)
+      .onClick(() => {
+        this.chooseTheme(mode);
+      })
+  }
+
   @Builder
   FontScaleOption(label: string, value: number) {
     Text(label)
       .fontSize(14)
-      .fontColor(this.fontScale === value ? '#2E6BE6' : '#5F6B7A')
+      .fontColor(this.fontScale === value ? $r('app.color.accent') : $r('app.color.text_secondary'))
       .fontWeight(this.fontScale === value ? FontWeight.Bold : FontWeight.Normal)
       .textAlign(TextAlign.Center)
       .height(34)
       .layoutWeight(1)
       .borderRadius(9)
-      .backgroundColor(this.fontScale === value ? '#E3EDFB' : Color.Transparent)
+      .backgroundColor(this.fontScale === value ? $r('app.color.accent_soft') : Color.Transparent)
       .onClick(() => {
         this.fontScale = value;
       })
@@ -52,7 +79,7 @@ export struct SettingsSheet {
   ActionRow(label: string, danger: boolean, action: () => void) {
     Text(label)
       .fontSize(15)
-      .fontColor(danger ? '#D9483B' : '#3A4250')
+      .fontColor(danger ? $r('app.color.danger') : $r('app.color.nav_text'))
       .width('100%')
       .padding({ top: 11, bottom: 11 })
       .hoverEffect(HoverEffect.Highlight)
@@ -66,23 +93,35 @@ export struct SettingsSheet {
         Text('设置')
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#1F2430')
+          .fontColor($r('app.color.text_primary'))
         Blank()
         Text('✕')
           .fontSize(18)
-          .fontColor('#8A93A0')
+          .fontColor($r('app.color.text_muted'))
           .onClick(() => {
             this.onClose();
           })
       }
       .width('100%')
 
-      // 字号
+      // 外观：主题 + 字号
       Column({ space: 8 }) {
+        Text('主题')
+          .fontSize(13)
+          .fontColor($r('app.color.text_muted'))
+          .width('100%')
+        Row({ space: 6 }) {
+          ForEach(THEME_OPTIONS, (mode: string, i: number) => {
+            this.ThemeOption(THEME_LABELS[i], mode)
+          }, (mode: string) => mode)
+        }
+        .width('100%')
+
         Text('正文字号')
           .fontSize(13)
-          .fontColor('#8A93A0')
+          .fontColor($r('app.color.text_muted'))
           .width('100%')
+          .margin({ top: 4 })
         Row({ space: 6 }) {
           this.FontScaleOption('紧凑', 0.9)
           this.FontScaleOption('标准', 1)
@@ -92,14 +131,14 @@ export struct SettingsSheet {
       }
       .width('100%')
       .padding(14)
-      .backgroundColor('#F7F8FA')
+      .backgroundColor($r('app.color.page_bg'))
       .borderRadius(12)
 
       // 数据管理
       Column({ space: 2 }) {
         Text('数据管理')
           .fontSize(13)
-          .fontColor('#8A93A0')
+          .fontColor($r('app.color.text_muted'))
           .width('100%')
         this.ActionRow('清除全部收藏', true, () => {
           this.favIds = '[]';
@@ -112,33 +151,33 @@ export struct SettingsSheet {
       }
       .width('100%')
       .padding({ left: 14, right: 14, top: 10, bottom: 10 })
-      .backgroundColor('#F7F8FA')
+      .backgroundColor($r('app.color.page_bg'))
       .borderRadius(12)
 
       // 关于
       Column({ space: 6 }) {
         Text('关于')
           .fontSize(13)
-          .fontColor('#8A93A0')
+          .fontColor($r('app.color.text_muted'))
           .width('100%')
         Row() {
           Text('口袋公式本')
             .fontSize(15)
-            .fontColor('#3A4250')
+            .fontColor($r('app.color.nav_text'))
           Blank()
           Text('v' + this.versionName())
             .fontSize(14)
-            .fontColor('#8A93A0')
+            .fontColor($r('app.color.text_muted'))
         }
         .width('100%')
         Text('纯离线考研数学公式速查工具，不收集任何个人信息。')
           .fontSize(12)
-          .fontColor('#A8B0BC')
+          .fontColor($r('app.color.text_faint'))
           .width('100%')
       }
       .width('100%')
       .padding(14)
-      .backgroundColor('#F7F8FA')
+      .backgroundColor($r('app.color.page_bg'))
       .borderRadius(12)
     }
     .padding(24)

@@ -3,6 +3,82 @@
     {
       "name": "start_window_background",
       "value": "#FFFFFF"
+    },
+    {
+      "name": "page_bg",
+      "value": "#F7F8FA"
+    },
+    {
+      "name": "panel_bg",
+      "value": "#EDF1F6"
+    },
+    {
+      "name": "card_bg",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "text_primary",
+      "value": "#1F2430"
+    },
+    {
+      "name": "text_body",
+      "value": "#333B4A"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#5F6B7A"
+    },
+    {
+      "name": "text_muted",
+      "value": "#8A93A0"
+    },
+    {
+      "name": "text_faint",
+      "value": "#A8B0BC"
+    },
+    {
+      "name": "nav_text",
+      "value": "#3A4250"
+    },
+    {
+      "name": "divider",
+      "value": "#E5E9F0"
+    },
+    {
+      "name": "divider_strong",
+      "value": "#DDE3EC"
+    },
+    {
+      "name": "accent",
+      "value": "#2E6BE6"
+    },
+    {
+      "name": "accent_soft",
+      "value": "#E3EDFB"
+    },
+    {
+      "name": "chip_bg",
+      "value": "#EEF2F7"
+    },
+    {
+      "name": "star",
+      "value": "#F7B500"
+    },
+    {
+      "name": "star_off",
+      "value": "#B0B6BF"
+    },
+    {
+      "name": "danger",
+      "value": "#D9483B"
+    },
+    {
+      "name": "on_accent",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "btn_secondary_bg",
+      "value": "#EEF1F5"
     }
   ]
 }

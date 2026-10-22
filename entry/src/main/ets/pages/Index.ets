@@ -78,6 +78,7 @@ struct Index {
   @State isQuizShow: boolean = false;
   @State currentFormula: Formula = EMPTY_FORMULA;
   @State windowWidthVp: number = 1200;
+  @State windowHeightVp: number = 800;
   @State selectedRow: number = -1;
   /** 搜索框是否持有焦点：持有时方向键归输入框，不做列表导航 */
   @State searchFocused: boolean = true;
@@ -257,22 +258,26 @@ struct Index {
       return;
     }
     window.getLastWindow(ctx).then((win: window.Window) => {
-      this.updateWidth(win.getWindowProperties().windowRect.width);
+      const rect: window.Rect = win.getWindowProperties().windowRect;
+      this.updateSize(rect.width, rect.height);
       win.on('windowSizeChange', (size: window.Size) => {
-        this.updateWidth(size.width);
+        this.updateSize(size.width, size.height);
       });
     }).catch(() => {
-      // 获取窗口失败时保持默认宽度
+      // 获取窗口失败时保持默认尺寸
     });
   }
 
-  private updateWidth(widthPx: number): void {
+  private updateSize(widthPx: number, heightPx: number): void {
     // 物理像素 -> vp（px2vp 已废弃，改用屏幕密度换算）
     try {
-      this.windowWidthVp = widthPx / display.getDefaultDisplaySync().densityPixels;
+      const density: number = display.getDefaultDisplaySync().densityPixels;
+      this.windowWidthVp = widthPx / density;
+      this.windowHeightVp = heightPx / density;
     } catch (err) {
       // 显示信息不可用时按 2x 密度兜底（PC 常见值）
       this.windowWidthVp = widthPx / 2;
+      this.windowHeightVp = heightPx / 2;
     }
   }
 
@@ -788,7 +793,8 @@ struct Index {
       .width('100%')
       .height('100%')
       .bindSheet(this.isShowSettings, this.SettingsBuilder(), {
-        height: SheetSize.FIT_CONTENT,
+        // 按窗口高度取面板高度：窗口矮时留出滚动空间，避免内容被裁掉
+        height: Math.min(560, Math.max(320, this.windowHeightVp - 80)),
         dragBar: false,
         showClose: false,
         onDisappear: () => {

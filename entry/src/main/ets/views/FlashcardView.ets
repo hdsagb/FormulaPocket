@@ -285,14 +285,31 @@ export struct FlashcardView {
     Column({ space: 20 }) {
       this.Header()
       if (this.finished) {
-        this.Summary()
+        Scroll() {
+          this.Summary()
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .align(Alignment.Top)
       } else {
-        this.QuestionCard()
+        // 题面区可滚动，判定按钮固定在底部，窗口较矮时也不会被裁掉
+        Scroll() {
+          Column({ space: 20 }) {
+            this.QuestionCard()
+            if (this.revealed) {
+              this.AnswerArea()
+            }
+          }
+          .width('100%')
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .align(Alignment.Top)
+
         if (this.revealed) {
-          this.AnswerArea()
           this.ActionButtons()
-        } else {
-          Blank()
         }
       }
     }

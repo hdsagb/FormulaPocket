@@ -48,6 +48,8 @@ export struct FormulaCard {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(1)
+          // 卡片走 ↑↓ + Enter 的键盘路径，不参与 Tab 焦点序列，避免 Tab 穿过整列卡片
+          .focusable(false)
           .onClick(() => {
             this.onOpen(this.formula);
           })
@@ -59,6 +61,7 @@ export struct FormulaCard {
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
+            .focusable(false)
             .onClick(() => {
               this.onOpen(this.formula);
             })
@@ -66,6 +69,7 @@ export struct FormulaCard {
         Text(this.isFav() ? '★' : '☆')
           .fontSize(20)
           .fontColor(this.isFav() ? $r('app.color.star') : $r('app.color.star_off'))
+          .focusable(false)
           .onClick(() => {
             this.favIds = toggleFavId(this.favIds, this.formula.id);
           })
@@ -87,6 +91,7 @@ export struct FormulaCard {
           .width('100%')
       }
       .width('100%')
+      .focusable(false)
       .onClick(() => {
         this.onOpen(this.formula);
       })

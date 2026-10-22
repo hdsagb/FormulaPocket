@@ -88,21 +88,23 @@ export struct SettingsSheet {
   }
 
   build() {
-    Column({ space: 14 }) {
-      Row() {
-        Text('设置')
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.text_primary'))
-        Blank()
-        Text('✕')
-          .fontSize(18)
-          .fontColor($r('app.color.text_muted'))
-          .onClick(() => {
-            this.onClose();
-          })
-      }
-      .width('100%')
+    // 包一层 Scroll：窗口较矮时（如 500vp 高的分屏窗口）内容可滚动，不会把「关于」区裁掉
+    Scroll() {
+      Column({ space: 14 }) {
+        Row() {
+          Text('设置')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor($r('app.color.text_primary'))
+          Blank()
+          Text('✕')
+            .fontSize(18)
+            .fontColor($r('app.color.text_muted'))
+            .onClick(() => {
+              this.onClose();
+            })
+        }
+        .width('100%')
 
       // 外观：主题 + 字号
       Column({ space: 8 }) {
@@ -179,8 +181,13 @@ export struct SettingsSheet {
       .padding(14)
       .backgroundColor($r('app.color.page_bg'))
       .borderRadius(12)
+      }
+      .width('100%')
+      .padding(24)
     }
-    .padding(24)
+    .width('100%')
+    .height('100%')
+    .scrollBar(BarState.Auto)
     .constraintSize({ minWidth: 420, maxWidth: 520 })
   }
 }
